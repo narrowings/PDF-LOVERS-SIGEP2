@@ -1,0 +1,222 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoDocumento {
+  CEDULA_CIUDADANIA
+  CEDULA_EXTRANJERIA
+  PASAPORTE
+  TARJETA_IDENTIDAD
+}
+
+enum Genero {
+  MASCULINO
+  FEMENINO
+  NO_BINARIO
+  PREFIERO_NO_DECIR
+}
+
+enum NivelAcademico {
+  BACHILLERATO
+  TECNICO
+  TECNOLOGO
+  PREGRADO
+  POSTGRADO
+  MAESTRIA
+  DOCTORADO
+  POSTDOCTORADO
+}
+
+enum TipoInstitucion {
+  PUBLICA
+  PRIVADA
+  MIXTA
+}
+
+enum EstadoEstudio {
+  EN_PROCESO
+  FINALIZADO
+}
+
+enum TipoZona {
+  URBANA
+  RURAL
+}
+
+enum RolUsuario {
+  SERVIDOR_PUBLICO
+  JEFE_TALENTO_HUMANO
+}
+
+model Usuario {
+  id               String        @id @default(cuid())
+  tipoDocumento    TipoDocumento
+  numeroDocumento  String        @unique
+  correo           String        @unique
+  passwordHash     String
+  rol              RolUsuario    @default(SERVIDOR_PUBLICO)
+  activo           Boolean       @default(true)
+  fechaFinRol      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  hojaDeVida       HojaDeVida?
+  refreshTokens    RefreshToken[]
+
+  @@index([tipoDocumento, numeroDocumento])
+  @@index([correo])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  usuarioId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
+
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([token])
+}
+
+model HojaDeVida {
+  id               String     @id @default(cuid())
+  usuarioId        String     @unique
+  primerNombre     String
+  segundoNombre    String?
+  primerApellido   String
+  segundoApellido  String?
+  fechaNacimiento  DateTime
+  genero           Genero
+  distritoMilitar  String?
+  claseLM          String?
+  numeroLM         String?
+  esPersonaExpPolit Boolean   @default(false)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  usuario          Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  datosDemograficos DatosDemograficos?
+  datosContacto    DatosContacto?
+  formacionAcademica FormacionAcademica[]
+  experienciaLaboral ExperienciaLaboral[]
+  experienciaDocente ExperienciaDocente[]
+}
+
+model DatosDemograficos {
+  id           String     @id @default(cuid())
+  hojaDeVidaId String     @unique
+  pais         String     @default("COLOMBIA")
+  departamento String?
+  municipio    String?
+  tipoZona     TipoZona   @default(URBANA)
+  direccion    String?
+  complemento  String?
+  updatedAt    DateTime   @updatedAt
+
+  hojaDeVida   HojaDeVida @relation(fields: [hojaDeVidaId], references: [id], onDelete: Cascade)
+}
+
+model DatosContacto {
+  id              String     @id @default(cuid())
+  hojaDeVidaId    String     @unique
+  telefonoFijo     String?
+  telefonoCelular  String?
+  correoPersonal   String?
+  updatedAt        DateTime   @updatedAt
+
+  hojaDeVida      HojaDeVida @relation(fields: [hojaDeVidaId], references: [id], onDelete: Cascade)
+}
+
+model FormacionAcademica {
+  id                   String         @id @default(cuid())
+  hojaDeVidaId         String
+  nivelAcademico       NivelAcademico
+  nivelFormacion       String?
+  areaConocimiento     String?
+  pais                 String         @default("COLOMBIA")
+  institucion          String
+  programaAcademico    String?
+  tituloObtenido       String
+  semestresAprobados   Int?
+  estadoEstudio        EstadoEstudio
+  fechaTerminacion     DateTime?
+  fechaGrado           DateTime?
+  estudiosExterior     Boolean        @default(false)
+  documentoUrl         String?
+  verificadoEdFormal   Boolean        @default(false)
+  verificadoTarjetaProf Boolean       @default(false)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  hojaDeVida           HojaDeVida     @relation(fields: [hojaDeVidaId], references: [id], onDelete: Cascade)
+
+  @@index([hojaDeVidaId])
+}
+
+model ExperienciaLaboral {
+  id                String          @id @default(cuid())
+  hojaDeVidaId      String
+  tipoInstitucion   TipoInstitucion
+  nombreEntidad     String
+  pais              String          @default("COLOMBIA")
+  departamento      String?
+  municipio         String?
+  tipoZona          TipoZona        @default(URBANA)
+  direccion         String?
+  cargo             String
+  areaConocimiento  String?
+  funcionesCargo    String?
+  trabajoActual     Boolean         @default(false)
+  fechaIngreso      DateTime
+  fechaRetiro       DateTime?
+  motivoRetiro      String?
+  jornadaLaboral    String?
+  horasMes          Int?
+  documentoUrl      String?
+  verificado        Boolean         @default(false)
+  tiempoExperiencia String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  hojaDeVida        HojaDeVida      @relation(fields: [hojaDeVidaId], references: [id], onDelete: Cascade)
+
+  @@index([hojaDeVidaId])
+}
+
+model ExperienciaDocente {
+  id                String          @id @default(cuid())
+  hojaDeVidaId      String
+  tipoInstitucion   TipoInstitucion @default(PUBLICA)
+  institucion       String
+  pais              String          @default("COLOMBIA")
+  departamento      String?
+  municipio         String?
+  nivelAcademico    NivelAcademico
+  tipoZona          TipoZona        @default(URBANA)
+  direccion         String?
+  trabajoActual     Boolean         @default(false)
+  fechaIngreso      DateTime
+  fechaRetiro       DateTime?
+  motivoRetiro      String?
+  jornadaLaboral    String?
+  telefono          String?
+  materiaImpartida  String?
+  tiempoExperiencia String?
+  documentoUrl      String?
+  verificado        Boolean         @default(false)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  hojaDeVida        HojaDeVida      @relation(fields: [hojaDeVidaId], references: [id], onDelete: Cascade)
+
+  @@index([hojaDeVidaId])
+}
