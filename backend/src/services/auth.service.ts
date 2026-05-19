@@ -5,156 +5,85 @@ import {
   generateAccessToken, generateRefreshToken,
   verifyRefreshToken, getRefreshTokenExpiry,
 } from '../utils/jwt';
-import {
-  UnauthorizedError, NotFoundError, ConflictError,
-} from '../utils/errors';
-import type {
-  LoginDto, CambiarPasswordDto, RecuperarPasswordDto,
-} from '../validators/auth.validators';
+import { UnauthorizedError, NotFoundError } from '../utils/errors';
+import type { LoginDto, CambiarPasswordDto, RecuperarPasswordDto, RefreshTokenDto } from '../validators/auth.validators';
 import { logger } from '../utils/logger';
+import { sendMail, emailRecuperarPassword } from '../utils/email';
 
-export const loginService = async (dto: LoginDto): Promise<{
-  accessToken: string;
-  refreshToken: string;
-  rol: string;
-}> => {
+/** Genera contraseña aleatoria que cumple: ≥6 chars, ≥1 letra, ≥1 número, ≥1 especial */
+export const generarPasswordAleatoria = (): string => {
+  const letras  = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ';
+  const numeros = '23456789';
+  const especiales = '!@#$%&*-_';
+  const todos = letras + numeros + especiales;
+  let pwd = '';
+  // Garantizar al menos uno de cada tipo
+  pwd += letras[Math.floor(Math.random() * letras.length)];
+  pwd += numeros[Math.floor(Math.random() * numeros.length)];
+  pwd += especiales[Math.floor(Math.random() * especiales.length)];
+  // Completar hasta 10 caracteres
+  for (let i = 3; i < 10; i++) pwd += todos[Math.floor(Math.random() * todos.length)];
+  // Mezclar
+  return pwd.split('').sort(() => Math.random() - 0.5).join('');
+};
+
+export const loginService = async (dto: LoginDto) => {
   const usuario = await prisma.usuario.findFirst({
-    where: {
-      tipoDocumento: dto.tipoDocumento,
-      numeroDocumento: dto.numeroDocumento,
-      activo: true,
-    },
+    where: { tipoDocumento: dto.tipoDocumento, numeroDocumento: dto.numeroDocumento, activo: true },
   });
-
-  // Timing-safe: siempre comparar aunque usuario no exista
   const hash = usuario?.passwordHash ?? '$2a$12$invalidhashpadding000000000000000000000000000000000000000';
   const valid = await bcrypt.compare(dto.password, hash);
+  if (!usuario || !valid) throw new UnauthorizedError('Credenciales inválidas');
+  if (usuario.fechaFinRol && usuario.fechaFinRol <= new Date()) throw new UnauthorizedError('Su acceso ha sido deshabilitado');
 
-  if (!usuario || !valid) {
-    throw new UnauthorizedError('Credenciales inválidas');
-  }
-
-  // Verificar que el rol siga activo (PAM: fecha fin de rol)
-  if (usuario.fechaFinRol && usuario.fechaFinRol <= new Date()) {
-    throw new UnauthorizedError('Su acceso ha sido deshabilitado');
-  }
-
-  const payload = {
-    sub: usuario.id,
-    rol: usuario.rol,
-    tipoDocumento: usuario.tipoDocumento,
-  };
-
+  const payload = { sub: usuario.id, rol: usuario.rol, tipoDocumento: usuario.tipoDocumento, correo: usuario.correo };
   const accessToken = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload);
-
-  await prisma.refreshToken.create({
-    data: {
-      token: refreshToken,
-      usuarioId: usuario.id,
-      expiresAt: getRefreshTokenExpiry(),
-    },
-  });
-
+  await prisma.refreshToken.create({ data: { token: refreshToken, usuarioId: usuario.id, expiresAt: getRefreshTokenExpiry() } });
   logger.info(`Login exitoso para usuario ${usuario.id} [${usuario.rol}]`);
   return { accessToken, refreshToken, rol: usuario.rol };
 };
 
-export const refreshTokenService = async (token: string): Promise<{
-  accessToken: string;
-  refreshToken: string;
-}> => {
+export const refreshTokenService = async (token: string) => {
   const payload = verifyRefreshToken(token);
-
-  const storedToken = await prisma.refreshToken.findUnique({
-    where: { token },
-    include: { usuario: true },
-  });
-
-  if (!storedToken || storedToken.revoked || storedToken.expiresAt <= new Date()) {
-    throw new UnauthorizedError('Refresh token inválido');
-  }
-
-  if (!storedToken.usuario.activo) {
-    throw new UnauthorizedError('Usuario desactivado');
-  }
-
-  // Rotar el refresh token (revoke old, issue new)
-  await prisma.refreshToken.update({ where: { id: storedToken.id }, data: { revoked: true } });
-
-  const newPayload = { sub: payload.sub, rol: payload.rol, tipoDocumento: payload.tipoDocumento };
-  const accessToken = generateAccessToken(newPayload);
-  const refreshToken = generateRefreshToken(newPayload);
-
-  await prisma.refreshToken.create({
-    data: {
-      token: refreshToken,
-      usuarioId: storedToken.usuarioId,
-      expiresAt: getRefreshTokenExpiry(),
-    },
-  });
-
+  const stored = await prisma.refreshToken.findUnique({ where: { token }, include: { usuario: true } });
+  if (!stored || stored.revoked || stored.expiresAt <= new Date()) throw new UnauthorizedError('Refresh token inválido');
+  if (!stored.usuario.activo) throw new UnauthorizedError('Usuario desactivado');
+  await prisma.refreshToken.update({ where: { id: stored.id }, data: { revoked: true } });
+  const np = { sub: payload.sub, rol: payload.rol, tipoDocumento: payload.tipoDocumento, correo: payload.correo ?? stored.usuario.correo };
+  const accessToken = generateAccessToken(np);
+  const refreshToken = generateRefreshToken(np);
+  await prisma.refreshToken.create({ data: { token: refreshToken, usuarioId: stored.usuarioId, expiresAt: getRefreshTokenExpiry() } });
   return { accessToken, refreshToken };
 };
 
-export const logoutService = async (token: string): Promise<void> => {
-  await prisma.refreshToken.updateMany({
-    where: { token },
-    data: { revoked: true },
-  });
-};
+export const logoutService = async (token: string) =>
+  prisma.refreshToken.updateMany({ where: { token }, data: { revoked: true } });
 
-export const cambiarPasswordService = async (
-  usuarioId: string,
-  dto: CambiarPasswordDto,
-): Promise<void> => {
+export const cambiarPasswordService = async (usuarioId: string, dto: CambiarPasswordDto) => {
   const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
   if (!usuario) throw new NotFoundError('Usuario');
-
   const valid = await bcrypt.compare(dto.passwordActual, usuario.passwordHash);
   if (!valid) throw new UnauthorizedError('Contraseña actual incorrecta');
-
   const rounds = parseInt(process.env['BCRYPT_ROUNDS'] ?? '12', 10);
   const newHash = await bcrypt.hash(dto.passwordNueva, rounds);
-
-  await prisma.usuario.update({
-    where: { id: usuarioId },
-    data: { passwordHash: newHash },
-  });
-
-  // Revocar todos los refresh tokens activos (forzar re-login)
-  await prisma.refreshToken.updateMany({
-    where: { usuarioId, revoked: false },
-    data: { revoked: true },
-  });
-
+  await prisma.usuario.update({ where: { id: usuarioId }, data: { passwordHash: newHash } });
+  await prisma.refreshToken.updateMany({ where: { usuarioId, revoked: false }, data: { revoked: true } });
   logger.info(`Contraseña cambiada para usuario ${usuarioId}`);
 };
 
-export const recuperarPasswordService = async (dto: RecuperarPasswordDto): Promise<void> => {
+export const recuperarPasswordService = async (dto: RecuperarPasswordDto) => {
   const usuario = await prisma.usuario.findFirst({
-    where: {
-      tipoDocumento: dto.tipoDocumento,
-      numeroDocumento: dto.numeroDocumento,
-      activo: true,
-    },
-    include: { hojaDeVida: { include: { datosContacto: true } } },
+    where: { tipoDocumento: dto.tipoDocumento, numeroDocumento: dto.numeroDocumento, activo: true },
   });
-
-  // Siempre responder igual para no revelar si el usuario existe
+  // Respuesta genérica para no revelar si el usuario existe
   if (!usuario || !usuario.correo) {
-    logger.warn(`Recuperación de contraseña: usuario no encontrado (doc: ${dto.numeroDocumento})`);
+    logger.warn(`Recuperación: usuario no encontrado (doc: ${dto.numeroDocumento})`);
     return;
   }
-
-  // Generar contraseña temporal segura
-  const tempPassword = crypto.randomBytes(8).toString('hex');
+  const tempPassword = generarPasswordAleatoria();
   const rounds = parseInt(process.env['BCRYPT_ROUNDS'] ?? '12', 10);
-  const hash = await bcrypt.hash(tempPassword, rounds);
-
-  await prisma.usuario.update({ where: { id: usuario.id }, data: { passwordHash: hash } });
-
-  // En producción aquí se enviaría el correo con el servicio SMTP configurado
-  logger.info(`Contraseña temporal generada para usuario ${usuario.id}. Correo: ${usuario.correo}`);
-  // TODO: Integrar servicio de correo (nodemailer / AWS SES)
+  await prisma.usuario.update({ where: { id: usuario.id }, data: { passwordHash: await bcrypt.hash(tempPassword, rounds) } });
+  await sendMail(emailRecuperarPassword(usuario.correo, tempPassword));
+  logger.info(`Contraseña temporal enviada a ${usuario.correo}`);
 };
