@@ -27,19 +27,16 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', '*.r2.cloudflarestorage.com', '*.r2.dev'],
+      scriptSrc:  ["'self'"],
+      styleSrc:   ["'self'", "'unsafe-inline'"],
+      imgSrc:     ["'self'", 'data:', '*.r2.cloudflarestorage.com', '*.r2.dev'],
     },
   },
 }));
 
 const allowedOrigins = (process.env['ALLOWED_ORIGINS'] ?? 'http://localhost:5173').split(',');
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-    else callback(new Error('CORS no permitido'));
-  },
+  origin: (origin, cb) => (!origin || allowedOrigins.includes(origin) ? cb(null, true) : cb(new Error('CORS no permitido'))),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -49,11 +46,7 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(uploadsDir));
-
-app.use(morgan('combined', {
-  stream: { write: (msg) => logger.http(msg.trim()) },
-}));
-
+app.use(morgan('combined', { stream: { write: msg => logger.http(msg.trim()) } }));
 app.use('/api/', rateLimiter);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
