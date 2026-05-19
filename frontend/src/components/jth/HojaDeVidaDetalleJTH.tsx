@@ -127,12 +127,12 @@ export default function HojaDeVidaDetalleJTH({ usuarioId, onUpdated }: Props) {
           {dd && <Field label="Dirección" value={dd['direccion']} />}
           {dc && <><Field label="Celular" value={dc['telefonoCelular']} /><Field label="Correo personal" value={dc['correoPersonal']} /></>}
         </div>
-        {hv['documentoUrl'] && (
-          <div>
-            <p className="text-xs text-neutral-500 mb-1">Documento de identidad adjunto:</p>
-            <InlineDoc url={hv['documentoUrl'] as string} />
-          </div>
-        )}
+              {Boolean(hv['documentoUrl']) && (
+        <div>
+          <p className="text-xs text-neutral-500 mb-1">Documento de identidad adjunto:</p>
+          <InlineDoc url={hv['documentoUrl'] as string} />
+        </div>
+      )}
       </div>
 
       {/* ── II. Formación ────────────────────────────────────────────── */}
@@ -153,7 +153,7 @@ export default function HojaDeVidaDetalleJTH({ usuarioId, onUpdated }: Props) {
                     <Field label="Estado"        value={f['estadoEstudio']} />
                     <Field label="Fecha grado"   value={fmt(f['fechaGrado'])} />
                     <Field label="País"          value={f['pais']} />
-                    {f['areaConocimiento'] && <Field label="Área" value={f['areaConocimiento']} />}
+                    {Boolean(f['areaConocimiento']) && <Field label="Área" value={f['areaConocimiento']} />}
                   </div>
                   <div className="mt-2">
                     <VerifyToggle verificado={Boolean(f['verificadoEdFormal'])} verificadoEn={f['verificadoEn'] as string}
@@ -186,10 +186,10 @@ export default function HojaDeVidaDetalleJTH({ usuarioId, onUpdated }: Props) {
                     <Field label="Tipo"          value={e['tipoInstitucion']} />
                     <Field label="Ingreso"       value={fmt(e['fechaIngreso'])} />
                     <Field label="Retiro"        value={e['trabajoActual'] ? 'Actual' : fmt(e['fechaRetiro'])} />
-                    {e['motivoRetiro'] && <Field label="Motivo retiro" value={e['motivoRetiro']} />}
-                    {e['jornadaLaboral'] && <Field label="Jornada" value={e['jornadaLaboral']} />}
+                    {Boolean(e['motivoRetiro']) && <Field label="Motivo retiro" value={e['motivoRetiro']} />}
+                    {Boolean(e['jornadaLaboral']) && <Field label="Jornada" value={e['jornadaLaboral']} />}
                   </div>
-                  {e['funcionesCargo'] && (
+                  {Boolean(e['funcionesCargo']) && (
                     <div className="flex flex-col">
                       <span className="text-xs text-neutral-400">Funciones</span>
                       <span className="text-xs text-neutral-700 whitespace-pre-wrap">{val(e['funcionesCargo'])}</span>
