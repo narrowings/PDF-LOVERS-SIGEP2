@@ -1,11 +1,11 @@
 // prisma/schema.prisma
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
 }
 
 enum TipoDocumento {
@@ -99,6 +99,7 @@ model HojaDeVida {
   distritoMilitar  String?
   claseLM          String?
   numeroLM         String?
+  documentoUrl          String?
   esPersonaExpPolit Boolean   @default(false)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
@@ -152,6 +153,7 @@ model FormacionAcademica {
   fechaGrado           DateTime?
   estudiosExterior     Boolean        @default(false)
   documentoUrl         String?
+  verificadoEn          DateTime?
   verificadoEdFormal   Boolean        @default(false)
   verificadoTarjetaProf Boolean       @default(false)
   createdAt            DateTime       @default(now())
@@ -182,6 +184,7 @@ model ExperienciaLaboral {
   jornadaLaboral    String?
   horasMes          Int?
   documentoUrl      String?
+  verificadoEn          DateTime?
   verificado        Boolean         @default(false)
   tiempoExperiencia String?
   createdAt         DateTime        @default(now())
@@ -212,6 +215,7 @@ model ExperienciaDocente {
   materiaImpartida  String?
   tiempoExperiencia String?
   documentoUrl      String?
+  verificadoEn          DateTime?
   verificado        Boolean         @default(false)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt

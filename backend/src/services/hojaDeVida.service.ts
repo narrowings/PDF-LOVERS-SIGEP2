@@ -6,17 +6,28 @@ import type {
 } from '../validators/hojaDeVida.validators';
 
 export const getHojaDeVida = async (usuarioId: string) => {
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: { tipoDocumento: true, numeroDocumento: true },
+  });
+
   const hdv = await prisma.hojaDeVida.findUnique({
     where: { usuarioId },
     include: {
-      datosDemograficos: true, datosContacto: true,
+      datosDemograficos: true,
+      datosContacto: true,
       formacionAcademica: { orderBy: { createdAt: 'desc' } },
       experienciaLaboral: { orderBy: { fechaIngreso: 'desc' } },
       experienciaDocente: { orderBy: { fechaIngreso: 'desc' } },
     },
   });
   if (!hdv) throw new NotFoundError('Hoja de vida');
-  return hdv;
+
+  return {
+    ...hdv,
+    tipoDocumento: usuario?.tipoDocumento,
+    numeroDocumento: usuario?.numeroDocumento,
+  };
 };
 
 export const upsertDatosPersonales = async (usuarioId: string, dto: DatosPersonalesDto) => {
