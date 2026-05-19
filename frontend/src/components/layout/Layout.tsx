@@ -5,11 +5,11 @@ import { useAuth } from '../../context/AuthContext';
 interface Props { children: ReactNode; }
 
 const NAV_ITEMS = [
-  { path: '/dashboard',              label: 'Inicio',                roles: ['SERVIDOR_PUBLICO', 'JEFE_TALENTO_HUMANO'] },
-  { path: '/hoja-de-vida',           label: 'Mi Hoja de Vida',       roles: ['SERVIDOR_PUBLICO', 'JEFE_TALENTO_HUMANO'] },
-  { path: '/gestion-usuarios',       label: 'Gestión de Usuarios',   roles: ['JEFE_TALENTO_HUMANO'] },
-  { path: '/gestion-hojas-de-vida',  label: 'Validar Hojas de Vida', roles: ['JEFE_TALENTO_HUMANO'] },
-  { path: '/cambiar-password',       label: 'Cambiar Contraseña',    roles: ['SERVIDOR_PUBLICO', 'JEFE_TALENTO_HUMANO'] },
+  { path: '/dashboard',             label: 'Inicio',                roles: ['SERVIDOR_PUBLICO', 'JEFE_TALENTO_HUMANO'] },
+  { path: '/hoja-de-vida',          label: 'Mi Hoja de Vida',       roles: ['SERVIDOR_PUBLICO', 'JEFE_TALENTO_HUMANO'] },
+  { path: '/gestion-usuarios',      label: 'Gestión de Usuarios',   roles: ['JEFE_TALENTO_HUMANO'] },
+  { path: '/gestion-hojas-de-vida', label: 'Validar Hojas de Vida', roles: ['JEFE_TALENTO_HUMANO'] },
+  { path: '/cambiar-password',      label: 'Cambiar Contraseña',    roles: ['SERVIDOR_PUBLICO', 'JEFE_TALENTO_HUMANO'] },
 ];
 
 export default function Layout({ children }: Props) {
@@ -24,7 +24,7 @@ export default function Layout({ children }: Props) {
     navigate('/login');
   };
 
-  const visible = NAV_ITEMS.filter(item => user && item.roles.includes(user.rol));
+  const visible = NAV_ITEMS.filter(i => user && i.roles.includes(user.rol));
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50">
@@ -40,8 +40,11 @@ export default function Layout({ children }: Props) {
               Función Pública
             </span>
           </div>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="hidden md:block text-primary-200 text-xs">{user?.sub}</span>
+          <div className="flex items-center gap-4">
+            {/* Punto 10: mostrar correo en lugar del ID interno */}
+            {user?.correo && (
+              <span className="hidden md:block text-xs text-primary-200">{user.correo}</span>
+            )}
             <span className="hidden sm:block text-xs bg-primary-600 rounded px-2 py-0.5">
               {user?.rol === 'JEFE_TALENTO_HUMANO' ? 'Jefe T.H.' : 'Servidor Público'}
             </span>

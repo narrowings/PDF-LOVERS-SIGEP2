@@ -4,32 +4,30 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import FormField from '../shared/FormField';
 import Alert from '../shared/Alert';
+import FileUpload from '../shared/FileUpload';
 import { hvApi } from '../../services/api';
 import { getApiError } from '../../utils/apiError';
 import type { HojaDeVidaData } from '../../pages/HojaDeVidaPage';
 
 const schema = z.object({
-  primerNombre: z.string().min(1, 'Requerido').max(60),
-  segundoNombre: z.string().max(60).optional(),
-  primerApellido: z.string().min(1, 'Requerido').max(60),
-  segundoApellido: z.string().max(60).optional(),
-  fechaNacimiento: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD requerido'),
-  genero: z.enum(['MASCULINO', 'FEMENINO', 'NO_BINARIO', 'PREFIERO_NO_DECIR']),
-  tipoDocumento: z.enum(['CEDULA_CIUDADANIA', 'CEDULA_EXTRANJERIA', 'PASAPORTE', 'TARJETA_IDENTIDAD']),
-  numeroDocumento: z.string().min(4).max(20).regex(/^\d+$/),
-  // Datos demográficos
-  pais: z.string().default('COLOMBIA'),
-  departamento: z.string().max(80).optional(),
-  municipio: z.string().max(80).optional(),
-  tipoZona: z.enum(['URBANA', 'RURAL']).default('URBANA'),
-  direccion: z.string().max(200).optional(),
-  complemento: z.string().max(200).optional(),
-  // Datos de contacto
-  telefonoFijo: z.string().max(15).optional(),
-  telefonoCelular: z.string().max(15).optional(),
-  correoPersonal: z.string().email('Correo inválido').optional().or(z.literal('')),
-  // Otros
-  esPersonaExpPolit: z.boolean().optional(),
+  primerNombre:       z.string().min(1, 'Requerido').max(60),
+  segundoNombre:      z.string().max(60).optional(),
+  primerApellido:     z.string().min(1, 'Requerido').max(60),
+  segundoApellido:    z.string().max(60).optional(),
+  fechaNacimiento:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD requerido'),
+  genero:             z.enum(['MASCULINO', 'FEMENINO', 'NO_BINARIO', 'PREFIERO_NO_DECIR']),
+  tipoDocumento:      z.enum(['CEDULA_CIUDADANIA', 'CEDULA_EXTRANJERIA', 'PASAPORTE', 'TARJETA_IDENTIDAD']),
+  numeroDocumento:    z.string().min(4, 'Mínimo 4 caracteres').max(20).regex(/^\d+$/, 'Solo dígitos'),
+  pais:               z.string().default('COLOMBIA'),
+  departamento:       z.string().max(80).optional(),
+  municipio:          z.string().max(80).optional(),
+  tipoZona:           z.enum(['URBANA', 'RURAL']).default('URBANA'),
+  direccion:          z.string().max(200).optional(),
+  complemento:        z.string().max(200).optional(),
+  telefonoFijo:       z.string().max(15).optional(),
+  telefonoCelular:    z.string().max(15).optional(),
+  correoPersonal:     z.string().email('Correo inválido').optional().or(z.literal('')),
+  esPersonaExpPolit:  z.boolean().optional(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -37,62 +35,66 @@ interface Props { data: HojaDeVidaData; onSaved: () => void; }
 
 export default function DatosPersonalesTab({ data, onSaved }: Props) {
   const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError]     = useState('');
+  // documentoUrl lives outside react-hook-form to avoid reset issues
+  const [docUrl, setDocUrl]   = useState<string>('');
 
   const dd = data.datosDemograficos as Record<string, unknown> | undefined;
-  const dc = data.datosContacto as Record<string, unknown> | undefined;
+  const dc = data.datosContacto    as Record<string, unknown> | undefined;
+
+  const defaultValues: FormData = {
+    primerNombre:      data.primerNombre      ?? '',
+    segundoNombre:     data.segundoNombre     ?? '',
+    primerApellido:    data.primerApellido    ?? '',
+    segundoApellido:   data.segundoApellido   ?? '',
+    fechaNacimiento:   data.fechaNacimiento   ? data.fechaNacimiento.slice(0, 10) : '',
+    genero:            (data.genero as FormData['genero']) ?? 'MASCULINO',
+    tipoDocumento:     (data.tipoDocumento as FormData['tipoDocumento']) ?? 'CEDULA_CIUDADANIA',
+    numeroDocumento:   data.numeroDocumento   ?? '',
+    pais:              (dd?.['pais']          as string) ?? 'COLOMBIA',
+    departamento:      (dd?.['departamento']  as string) ?? '',
+    municipio:         (dd?.['municipio']     as string) ?? '',
+    tipoZona:          ((dd?.['tipoZona']     as FormData['tipoZona']) ?? 'URBANA'),
+    direccion:         (dd?.['direccion']     as string) ?? '',
+    complemento:       (dd?.['complemento']   as string) ?? '',
+    telefonoFijo:      (dc?.['telefonoFijo']  as string) ?? '',
+    telefonoCelular:   (dc?.['telefonoCelular'] as string) ?? '',
+    correoPersonal:    (dc?.['correoPersonal'] as string) ?? '',
+    esPersonaExpPolit: data.esPersonaExpPolit ?? false,
+  };
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      primerNombre: data.primerNombre ?? '',
-      segundoNombre: data.segundoNombre ?? '',
-      primerApellido: data.primerApellido ?? '',
-      segundoApellido: data.segundoApellido ?? '',
-      fechaNacimiento: data.fechaNacimiento ? data.fechaNacimiento.slice(0, 10) : '',
-      genero: (data.genero as FormData['genero']) ?? 'MASCULINO',
-      tipoDocumento: 'CEDULA_CIUDADANIA',
-      numeroDocumento: '',
-      pais: (dd?.pais as string) ?? 'COLOMBIA',
-      departamento: (dd?.departamento as string) ?? '',
-      municipio: (dd?.municipio as string) ?? '',
-      tipoZona: ((dd?.tipoZona as FormData['tipoZona']) ?? 'URBANA'),
-      direccion: (dd?.direccion as string) ?? '',
-      complemento: (dd?.complemento as string) ?? '',
-      telefonoFijo: (dc?.telefonoFijo as string) ?? '',
-      telefonoCelular: (dc?.telefonoCelular as string) ?? '',
-      correoPersonal: (dc?.correoPersonal as string) ?? '',
-      esPersonaExpPolit: data.esPersonaExpPolit ?? false,
-    },
+    defaultValues,
   });
 
-  useEffect(() => { reset({ primerNombre: data.primerNombre ?? '' }); }, [data, reset]);
+  // Sync when parent data changes (after onSaved reload)
+  useEffect(() => {
+    reset(defaultValues);
+    setDocUrl((data.documentoUrl as string) ?? '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
-  const onSubmit = async (formData: FormData) => {
+  const onSubmit = async (fd: FormData) => {
     setError(''); setSuccess('');
     try {
       await hvApi.saveDatosPersonales({
-        primerNombre: formData.primerNombre,
-        segundoNombre: formData.segundoNombre,
-        primerApellido: formData.primerApellido,
-        segundoApellido: formData.segundoApellido,
-        fechaNacimiento: formData.fechaNacimiento,
-        genero: formData.genero,
-        tipoDocumento: formData.tipoDocumento,
-        numeroDocumento: formData.numeroDocumento,
-        esPersonaExpPolit: formData.esPersonaExpPolit,
+        primerNombre: fd.primerNombre, segundoNombre: fd.segundoNombre,
+        primerApellido: fd.primerApellido, segundoApellido: fd.segundoApellido,
+        fechaNacimiento: fd.fechaNacimiento, genero: fd.genero,
+        tipoDocumento: fd.tipoDocumento, numeroDocumento: fd.numeroDocumento,
+        esPersonaExpPolit: fd.esPersonaExpPolit,
+        documentoUrl: docUrl || undefined,
       });
       await hvApi.saveDatosDemograficos({
-        pais: formData.pais, departamento: formData.departamento,
-        municipio: formData.municipio, tipoZona: formData.tipoZona,
-        direccion: formData.direccion, complemento: formData.complemento,
+        pais: fd.pais, departamento: fd.departamento, municipio: fd.municipio,
+        tipoZona: fd.tipoZona, direccion: fd.direccion, complemento: fd.complemento,
       });
       await hvApi.saveDatosContacto({
-        telefonoFijo: formData.telefonoFijo,
-        telefonoCelular: formData.telefonoCelular,
-        correoPersonal: formData.correoPersonal || undefined,
+        telefonoFijo: fd.telefonoFijo, telefonoCelular: fd.telefonoCelular,
+        correoPersonal: fd.correoPersonal || undefined,
       });
-      setSuccess('Datos personales guardados correctamente');
+      setSuccess('Datos personales guardados correctamente.');
       onSaved();
     } catch (err) { setError(getApiError(err)); }
   };
@@ -100,9 +102,9 @@ export default function DatosPersonalesTab({ data, onSaved }: Props) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error   && <Alert type="error"   message={error}   onClose={() => setError('')} />}
 
-      {/* Datos básicos */}
+      {/* ── Datos básicos ─────────────────────────────────────────────── */}
       <div>
         <h3 className="section-title">Datos Básicos</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -120,16 +122,17 @@ export default function DatosPersonalesTab({ data, onSaved }: Props) {
           <FormField label="Segundo Apellido" htmlFor="segundoApellido" error={errors.segundoApellido?.message}>
             <input id="segundoApellido" type="text" {...register('segundoApellido')} className="input-field" />
           </FormField>
-          <FormField label="Tipo de Documento" required htmlFor="tipodoc" error={errors.tipoDocumento?.message}>
-            <select id="tipodoc" {...register('tipoDocumento')} className="input-field">
+          <FormField label="Tipo de Documento" required htmlFor="tipoDocumento" error={errors.tipoDocumento?.message}>
+            <select id="tipoDocumento" {...register('tipoDocumento')} className="input-field">
               <option value="CEDULA_CIUDADANIA">Cédula de Ciudadanía</option>
               <option value="CEDULA_EXTRANJERIA">Cédula de Extranjería</option>
               <option value="PASAPORTE">Pasaporte</option>
               <option value="TARJETA_IDENTIDAD">Tarjeta de Identidad</option>
             </select>
           </FormField>
-          <FormField label="Número de Identificación" required htmlFor="numdoc" error={errors.numeroDocumento?.message}>
-            <input id="numdoc" type="text" inputMode="numeric" {...register('numeroDocumento')}
+          {/* Punto 3: numeroDocumento no se borra */}
+          <FormField label="Número de Identificación" required htmlFor="numeroDocumento" error={errors.numeroDocumento?.message}>
+            <input id="numeroDocumento" type="text" inputMode="numeric" {...register('numeroDocumento')}
               className={`input-field ${errors.numeroDocumento ? 'input-error' : ''}`} />
           </FormField>
           <FormField label="Fecha de Nacimiento" required htmlFor="fechaNac" error={errors.fechaNacimiento?.message}>
@@ -153,7 +156,7 @@ export default function DatosPersonalesTab({ data, onSaved }: Props) {
         </div>
       </div>
 
-      {/* Datos demográficos */}
+      {/* ── Datos demográficos ────────────────────────────────────────── */}
       <div>
         <h3 className="section-title">Datos Demográficos</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -181,7 +184,7 @@ export default function DatosPersonalesTab({ data, onSaved }: Props) {
         </div>
       </div>
 
-      {/* Datos de contacto */}
+      {/* ── Datos de contacto ─────────────────────────────────────────── */}
       <div>
         <h3 className="section-title">Datos de Contacto</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -196,6 +199,20 @@ export default function DatosPersonalesTab({ data, onSaved }: Props) {
               className={`input-field ${errors.correoPersonal ? 'input-error' : ''}`} />
           </FormField>
         </div>
+      </div>
+
+      {/* ── Documento soporte (HU-013) ────────────────────────────────── */}
+      <div>
+        <h3 className="section-title">Documento de Soporte</h3>
+        <FormField label="Adjuntar cédula / documento de identidad (PDF, JPG o PNG · máx. 2 MB)">
+          <FileUpload
+            currentUrl={docUrl || null}
+            onUploaded={url => setDocUrl(url)}
+            accept=".pdf,.jpg,.jpeg,.png"
+            maxMB={2}
+            label="Seleccionar documento"
+          />
+        </FormField>
       </div>
 
       <div className="flex justify-end">
