@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 interface MockUser { id: string; correo: string; password: string; rol: string; tipoDocumento: string; }
 
