@@ -1,0 +1,28 @@
+@startuml C4_Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama de Contenedores — SIGEP II
+
+Person(servidor, "Servidor Público")
+Person(jth, "Jefe de Talento Humano")
+
+System_Boundary(sigep2, "SIGEP II") {
+    Container(frontend, "Frontend SPA", "React 18 + TypeScript + Vite + TailwindCSS", "Interfaz web para gestión de hoja de vida y administración")
+    Container(backend, "Backend API REST", "Node.js 20 + Express + TypeScript", "Lógica de negocio, autenticación JWT, validación con Zod")
+    ContainerDb(db, "Base de Datos", "PostgreSQL 16", "Usuarios, hojas de vida, formación, experiencia, tokens")
+}
+
+System_Ext(resend, "Resend / Gmail SMTP", "Envío de correos")
+System_Ext(r2, "Cloudflare R2", "Almacenamiento de archivos")
+
+Rel(servidor, frontend, "Usa", "HTTPS / Browser")
+Rel(jth, frontend, "Usa", "HTTPS / Browser")
+Rel(frontend, backend, "Llama endpoints REST", "HTTPS / JSON")
+Rel(backend, db, "Lee y escribe", "TCP / Prisma ORM")
+Rel(backend, resend, "Envía emails", "HTTPS")
+Rel(backend, r2, "Sube documentos", "HTTPS S3-API")
+Rel(frontend, r2, "Previsualiza documentos", "HTTPS")
+
+@enduml

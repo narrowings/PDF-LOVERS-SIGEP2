@@ -1,0 +1,23 @@
+@startuml C4_Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama de Contexto — SIGEP II
+
+Person(servidor, "Servidor Público", "Funcionario del Estado colombiano que gestiona su hoja de vida")
+Person(jth, "Jefe de Talento Humano", "Administra usuarios, valida hojas de vida y gestiona accesos")
+
+System(sigep2, "SIGEP II", "Sistema web para gestión de hojas de vida de servidores públicos")
+
+System_Ext(resend, "Resend / Gmail SMTP", "Servicio de envío de correos electrónicos")
+System_Ext(r2, "Cloudflare R2", "Almacenamiento de documentos soporte (PDF, JPG, PNG)")
+System_Ext(postgres, "PostgreSQL", "Base de datos relacional")
+
+Rel(servidor, sigep2, "Registra y actualiza su hoja de vida", "HTTPS")
+Rel(jth, sigep2, "Crea usuarios, valida información y gestiona accesos", "HTTPS")
+Rel(sigep2, resend, "Envía credenciales y recuperación de contraseña", "HTTPS API")
+Rel(sigep2, r2, "Sube y recupera documentos soporte", "HTTPS S3-API")
+Rel(sigep2, postgres, "Persiste datos de usuarios y hojas de vida", "TCP/Prisma ORM")
+
+@enduml
