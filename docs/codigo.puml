@@ -1,0 +1,259 @@
+@startuml C4_Codigo_SIGEP2_Mejorado
+
+' ─────────────────────────────────────────────
+' CONFIGURACIÓN GENERAL
+' ─────────────────────────────────────────────
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+skinparam roundcorner 12
+skinparam wrapWidth 180
+skinparam dpi 180
+
+title Diagrama de Código (C4 - Nivel 4)\nModelo de Dominio — Prisma Schema — SIGEP II
+
+' ─────────────────────────────────────────────
+' ESTILOS VISUALES
+' ─────────────────────────────────────────────
+
+skinparam class {
+    BackgroundColor<<entity>> #DCEBFA
+    BorderColor<<entity>> #4A90E2
+    FontColor<<entity>> #111111
+
+    BackgroundColor<<enum>> #E4E4E4
+    BorderColor<<enum>> #7A7A7A
+    FontColor<<enum>> #111111
+
+    BackgroundColor<<noteStyle>> #FFF8DC
+    BorderColor<<noteStyle>> #C9B458
+    FontColor<<noteStyle>> #222222
+}
+
+' ─────────────────────────────────────────────
+' ENUMERACIONES
+' ─────────────────────────────────────────────
+
+enum RolUsuario <<enum>> {
+    SERVIDOR_PUBLICO
+    JEFE_TALENTO_HUMANO
+}
+
+enum TipoDocumento <<enum>> {
+    CEDULA_CIUDADANIA
+    CEDULA_EXTRANJERIA
+    PASAPORTE
+    TARJETA_IDENTIDAD
+}
+
+enum NivelAcademico <<enum>> {
+    BACHILLERATO
+    TECNICO
+    TECNOLOGO
+    PREGRADO
+    ESPECIALIZACION
+    MAESTRIA
+    DOCTORADO
+}
+
+enum EstadoEstudio <<enum>> {
+    EN_CURSO
+    FINALIZADO
+    SUSPENDIDO
+}
+
+' ─────────────────────────────────────────────
+' FILA SUPERIOR
+' ─────────────────────────────────────────────
+
+class Usuario <<entity>> {
+    +id : String <<PK, CUID>>
+    +tipoDocumento : TipoDocumento
+    +numeroDocumento : String <<unique>>
+    +correo : String <<unique>>
+    +passwordHash : String
+    +rol : RolUsuario
+    +activo : Boolean = true
+    +createdAt : DateTime
+    +updatedAt : DateTime
+}
+
+class RefreshToken <<entity>> {
+    +id : String <<PK, CUID>>
+    +token : String <<unique>>
+    +usuarioId : String <<FK>>
+    +expiresAt : DateTime
+    +createdAt : DateTime
+}
+
+' ─────────────────────────────────────────────
+' CENTRO
+' ─────────────────────────────────────────────
+
+class HojaDeVida <<entity>> {
+    +id : String <<PK, CUID>>
+    +usuarioId : String <<FK, unique>>
+    +primerNombre : String
+    +segundoNombre : String?
+    +primerApellido : String
+    +segundoApellido : String?
+    +fechaNacimiento : DateTime?
+    +lugarNacimiento : String?
+    +nacionalidad : String?
+    +documentoUrl : String?
+    +createdAt : DateTime
+    +updatedAt : DateTime
+}
+
+' ─────────────────────────────────────────────
+' FILA INFERIOR
+' ─────────────────────────────────────────────
+
+class DatosDemograficos <<entity>> {
+    +id : String <<PK, CUID>>
+    +hojaDeVidaId : String <<FK, unique>>
+    +grupoEtnico : String?
+    +discapacidad : String?
+    +estrato : Int?
+    +createdAt : DateTime
+    +updatedAt : DateTime
+}
+
+class DatosContacto <<entity>> {
+    +id : String <<PK, CUID>>
+    +hojaDeVidaId : String <<FK, unique>>
+    +telefono : String?
+    +celular : String?
+    +direccion : String?
+    +municipio : String?
+    +departamento : String?
+    +createdAt : DateTime
+    +updatedAt : DateTime
+}
+
+class FormacionAcademica <<entity>> {
+    +id : String <<PK, CUID>>
+    +hojaDeVidaId : String <<FK>>
+    +nivelAcademico : NivelAcademico
+    +nivelFormacion : String?
+    +areaConocimiento : String?
+    +pais : String?
+    +institucion : String
+    +programaAcademico : String
+    +tituloObtenido : String
+    +semestresAprobados : Int?
+    +estadoEstudio : EstadoEstudio
+    +fechaTerminacion : DateTime?
+    +fechaGrado : DateTime?
+    +estudiosExterior : Boolean = false
+    +documentoUrl : String?
+    +verificadoEdFormal : Boolean = false
+    +verificadoTarjetaProf : Boolean = false
+    +verificadoEn : DateTime?
+    +createdAt : DateTime
+    +updatedAt : DateTime
+}
+
+class ExperienciaLaboral <<entity>> {
+    +id : String <<PK, CUID>>
+    +hojaDeVidaId : String <<FK>>
+    +nombreEntidad : String
+    +sectorEntidad : String?
+    +cargo : String
+    +areaTrabajo : String?
+    +fechaIngreso : DateTime
+    +fechaRetiro : DateTime?
+    +trabajoActual : Boolean = false
+    +funcionesCargo : String?
+    +documentoUrl : String?
+    +verificado : Boolean = false
+    +verificadoEn : DateTime?
+    +createdAt : DateTime
+    +updatedAt : DateTime
+}
+
+class ExperienciaDocente <<entity>> {
+    +id : String <<PK, CUID>>
+    +hojaDeVidaId : String <<FK>>
+    +institucion : String
+    +nivelAcademico : String?
+    +areaConocimiento : String?
+    +cargo : String?
+    +fechaIngreso : DateTime
+    +fechaRetiro : DateTime?
+    +docenteActual : Boolean = false
+    +documentoUrl : String?
+    +verificado : Boolean = false
+    +verificadoEn : DateTime?
+    +createdAt : DateTime
+    +updatedAt : DateTime
+}
+
+' ─────────────────────────────────────────────
+' ORGANIZACIÓN VISUAL
+' ─────────────────────────────────────────────
+
+Usuario -[hidden]right- RefreshToken
+DatosDemograficos -[hidden]right- DatosContacto
+DatosContacto -[hidden]right- FormacionAcademica
+FormacionAcademica -[hidden]right- ExperienciaLaboral
+ExperienciaLaboral -[hidden]right- ExperienciaDocente
+
+' ─────────────────────────────────────────────
+' RELACIONES
+' ─────────────────────────────────────────────
+
+Usuario "1" *-- "0..1" HojaDeVida : tiene >
+Usuario "1" *-- "0..*" RefreshToken : posee >
+
+HojaDeVida "1" *-- "0..1" DatosDemograficos : tiene >
+HojaDeVida "1" *-- "0..1" DatosContacto : tiene >
+HojaDeVida "1" *-- "0..*" FormacionAcademica : contiene >
+HojaDeVida "1" *-- "0..*" ExperienciaLaboral : contiene >
+HojaDeVida "1" *-- "0..*" ExperienciaDocente : contiene >
+
+' ─────────────────────────────────────────────
+' DEPENDENCIAS ENUM
+' ─────────────────────────────────────────────
+
+Usuario ..> RolUsuario : usa
+Usuario ..> TipoDocumento : usa
+
+FormacionAcademica ..> NivelAcademico : usa
+FormacionAcademica ..> EstadoEstudio : usa
+
+' ─────────────────────────────────────────────
+' NOTAS ACLARATORIAS
+' ─────────────────────────────────────────────
+
+note right of HojaDeVida
+Se crea una única vez por servidor.
+
+Aplica para sucesivas vinculaciones.
+
+Una vez validado un registro por el JTH,
+el servidor no puede modificarlo
+hasta que el JTH levante la validación.
+end note
+
+note bottom of FormacionAcademica
+verificadoEn registra la fecha exacta
+en que el JTH validó el registro.
+
+verificadoEdFormal = título formal.
+
+verificadoTarjetaProf = tarjeta profesional.
+end note
+
+note bottom of ExperienciaLaboral
+verificado = true indica que el JTH
+contrastó el registro con el soporte
+físico adjunto (documentoUrl).
+end note
+
+@enduml

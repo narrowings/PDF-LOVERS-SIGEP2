@@ -1,0 +1,49 @@
+@startuml C4_Component
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama de Componentes — Backend SIGEP II
+
+Container_Boundary(backend, "Backend API REST") {
+    Component(authRoutes, "Auth Routes", "Express Router", "POST /login, /refresh, /logout, /recuperar-password, PATCH /cambiar-password")
+    Component(hvRoutes, "HojaDeVida Routes", "Express Router", "GET/PUT datos personales, demograficos, contacto; CRUD formacion, experiencia laboral, docente")
+    Component(usuarioRoutes, "Usuario Routes", "Express Router", "GET listar, POST crear, PATCH inhabilitar — solo JTH")
+    Component(jthRoutes, "JTH Routes", "Express Router", "GET hojas de vida, PATCH verificar formacion/experiencia/docente — solo JTH")
+    Component(uploadRoutes, "Upload Routes", "Express Router + Multer", "POST /upload — PDF, JPG, PNG máx. 2MB")
+
+    Component(authService, "Auth Service", "TypeScript", "Login, refresh token, logout, cambiar y recuperar contraseña")
+    Component(hvService, "HojaDeVida Service", "TypeScript", "CRUD hoja de vida con bloqueo si registro validado por JTH")
+    Component(usuarioService, "Usuario Service", "TypeScript", "Crear usuario con contraseña aleatoria, inhabilitar rol")
+    Component(jthService, "JTH Service", "TypeScript", "Listar HVs, ver HV completa, toggle verificado con fecha")
+
+    Component(authMiddleware, "Authenticate Middleware", "TypeScript", "Verifica JWT Bearer, agrega user al request")
+    Component(roleMiddleware, "RequireRole Middleware", "TypeScript", "Verifica rol SERVIDOR_PUBLICO o JEFE_TALENTO_HUMANO")
+    Component(validateMiddleware, "Validate Middleware", "Zod", "Valida body de cada request")
+    Component(rateLimiter, "Rate Limiter", "express-rate-limit", "100 req/15min global, 10 req/15min en auth")
+
+    Component(jwtUtil, "JWT Utils", "jsonwebtoken", "Genera y verifica access token (15m) y refresh token (7d)")
+    Component(emailUtil, "Email Utils", "Nodemailer/Resend", "Envía correos de bienvenida y recuperación de contraseña")
+    Component(prismaClient, "Prisma Client", "Prisma ORM", "Acceso tipado a PostgreSQL")
+}
+
+Rel(authRoutes, authMiddleware, "Usa en rutas protegidas")
+Rel(hvRoutes, authMiddleware, "Usa")
+Rel(usuarioRoutes, authMiddleware, "Usa")
+Rel(usuarioRoutes, roleMiddleware, "Requiere JTH")
+Rel(jthRoutes, authMiddleware, "Usa")
+Rel(jthRoutes, roleMiddleware, "Requiere JTH")
+
+Rel(authRoutes, authService, "Delega")
+Rel(hvRoutes, hvService, "Delega")
+Rel(usuarioRoutes, usuarioService, "Delega")
+Rel(jthRoutes, jthService, "Delega")
+
+Rel(authService, jwtUtil, "Genera tokens")
+Rel(authService, prismaClient, "Consulta usuarios y refresh tokens")
+Rel(hvService, prismaClient, "CRUD hoja de vida")
+Rel(jthService, prismaClient, "Lee y actualiza verificaciones")
+Rel(usuarioService, emailUtil, "Envía credenciales")
+Rel(authService, emailUtil, "Envía contraseña temporal")
+
+@enduml
