@@ -19,3 +19,6 @@ bootstrap().catch((err: unknown) => {
   logger.error('Error al iniciar el servidor', err);
   process.exit(1);
 });
+
+// temporal en index.ts
+console.log('GMAIL_USER:', process.env['GMAIL_USER']);
