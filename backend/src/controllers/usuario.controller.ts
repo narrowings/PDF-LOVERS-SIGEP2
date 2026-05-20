@@ -17,7 +17,7 @@ export const inhabilitarRol = async (req: AuthRequest, res: Response, next: Next
   } catch (err) { next(err); }
 };
 
-export const listarUsuarios = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const listarUsuarios = async (_req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const data = await usuarioService.listarUsuarios();
     res.status(200).json(data);

@@ -1,12 +1,12 @@
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
+
 import { prisma } from '../config/database';
 import {
   generateAccessToken, generateRefreshToken,
   verifyRefreshToken, getRefreshTokenExpiry,
 } from '../utils/jwt';
 import { UnauthorizedError, NotFoundError } from '../utils/errors';
-import type { LoginDto, CambiarPasswordDto, RecuperarPasswordDto, RefreshTokenDto } from '../validators/auth.validators';
+import type { LoginDto, CambiarPasswordDto, RecuperarPasswordDto} from '../validators/auth.validators';
 import { logger } from '../utils/logger';
 import { sendMail, emailRecuperarPassword } from '../utils/email';
 
