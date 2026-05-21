@@ -4,7 +4,8 @@
 
 Sistema web para la gestión de hojas de vida de servidores públicos del Estado colombiano, compatible funcionalmente con el módulo de Hoja de Vida del SIGEP II administrado por el Departamento Administrativo de la Función Pública.
 
----
+--- VIDEO DE DEMOSTRACIÓN DEL PRODUCTO ---
+https://youtu.be/WYY2vvACWic
 
 ## Tabla de Contenidos
 
